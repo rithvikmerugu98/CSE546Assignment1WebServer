@@ -15,10 +15,9 @@ public class SQSAWSClient {
         sqsClient = SqsClient.builder().region(region).build();
     }
 
-    public void publishMessages(String queueURL, String messageBody, String requestId, String name) {
+    public void publishMessages(String queueURL, String messageBody, String requestId) {
         Map<String, MessageAttributeValue> attr = new HashMap<>();
-        attr.put("requestId", MessageAttributeValue.builder().stringValue(requestId).build());
-        attr.put("name", MessageAttributeValue.builder().stringValue(name).build());
+        attr.put("requestId", MessageAttributeValue.builder().dataType("String").stringValue(requestId).build());
         sqsClient.sendMessage(SendMessageRequest.builder()
                 .messageBody(messageBody)
                 .messageAttributes(attr)
@@ -39,18 +38,20 @@ public class SQSAWSClient {
         int count =  0;
         while(count++ < 10) {
             ReceiveMessageResponse response = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
-                    .queueUrl(queueUrl).maxNumberOfMessages(10).build());
+                    .queueUrl(queueUrl).messageAttributeNames("*").maxNumberOfMessages(10).build());
+
+            System.out.println(response);
             if (response.hasMessages()) {
                 List<Message> messages = response.messages();
                 for (Message message : messages) {
                     String messageRequestID = message.messageAttributes().get("requestId").stringValue();
-                    if(requestID == messageRequestID) {
+                    if(requestID.equals(messageRequestID)) {
                         return message.body();
                     }
                 }
             }
             try{
-                Thread.sleep(10000);
+                Thread.sleep(2000);
             } catch (InterruptedException ex) {
                 return "Was not able to process the request.";
             }

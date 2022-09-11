@@ -50,12 +50,31 @@ public class WebserverApplication {
 			return "An issue has occurred while trying to encode Image.";
 		}
 
-		String requestId = handler.publishImageToSQSQueue(messageBody, multipartFile.getName());
+		String requestId = handler.publishImageToSQSQueue(messageBody);
 
 		//TODO invoke a app server(Scaling).
 
 
 		return handler.getClassifiedImageResult(requestId);
+	}
+
+	@GetMapping("/classify")
+	public String testApi() {
+
+//		String messageBody = "";
+//		try {
+//			messageBody = Base64.getEncoder().encodeToString(multipartFile.getBytes());
+//		} catch (IOException e) {
+//			e.printStackTrace();
+//			return "An issue has occurred while trying to encode Image.";
+//		}
+//
+//		String requestId = handler.publishImageToSQSQueue(messageBody);
+
+		//TODO invoke a app server(Scaling).
+
+
+		return handler.getClassifiedImageResult("1662864974690");
 	}
 
 }

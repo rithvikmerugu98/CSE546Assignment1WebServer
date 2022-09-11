@@ -22,11 +22,11 @@ public class ServerHandler {
         awsClientsProvider = new AWSClientProvider();
     }
 
-    public String publishImageToSQSQueue(String messageBody, String fileName) {
+    public String publishImageToSQSQueue(String messageBody) {
         String requestId = String.valueOf(Instant.now().toEpochMilli());
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
-        sqsClient.publishMessages(requestQueue, messageBody, requestId,fileName );
+        sqsClient.publishMessages(requestQueue, messageBody, requestId );
         return requestId;
     }
 
