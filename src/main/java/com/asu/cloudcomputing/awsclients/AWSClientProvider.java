@@ -9,6 +9,8 @@ public class AWSClientProvider {
     private SQSAWSClient sqsClient;
     private Ec2AWSClient ec2Client;
 
+    private  S3AWSClient s3Client;
+
     private Region region;
 
     public AWSClientProvider() {
@@ -30,5 +32,11 @@ public class AWSClientProvider {
         return sqsClient;
     }
 
+    public S3AWSClient getS3Client() {
+        if(s3Client == null) {
+            s3Client = new S3AWSClient(region);
+        }
+        return s3Client;
+    }
 
 }

@@ -4,6 +4,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,34 @@ public class SQSAWSClient {
             }
         }
         return "";
+    }
+
+    public Map<String, String> getMessagesFromResponseQueue(String queueUrl) {
+        Map<String, String> responses = new HashMap<>();
+        ReceiveMessageResponse response = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
+                .queueUrl(queueUrl).messageAttributeNames("*").maxNumberOfMessages(10).build());
+        List<String> messageReceipts = new ArrayList<>();
+        System.out.println(response);
+        if (response.hasMessages()) {
+            List<Message> messages = response.messages();
+            for (Message message : messages) {
+                String messageRequestID = message.messageAttributes().get("requestId").stringValue();
+                String messageBody = message.body();
+                responses.put(messageRequestID, messageBody);
+                messageReceipts.add(message.receiptHandle());
+            }
+        }
+        deleteMessages(queueUrl, messageReceipts);
+        return responses;
+    }
+
+    public int getMessagesInQueue(String queueURL) {
+        GetQueueAttributesResponse res = sqsClient.getQueueAttributes(GetQueueAttributesRequest.builder()
+                .queueUrl(queueURL)
+                .attributeNamesWithStrings("ApproximateNumberOfMessages")
+                .build());
+        return Integer.parseInt(res.attributesAsStrings()
+                .getOrDefault("ApproximateNumberOfMessages", "0"));
     }
 
 }

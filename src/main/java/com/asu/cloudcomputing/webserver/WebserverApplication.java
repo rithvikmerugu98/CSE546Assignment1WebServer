@@ -1,29 +1,25 @@
 package com.asu.cloudcomputing.webserver;
 
-import com.asu.cloudcomputing.awsclients.AWSClientProvider;
-import com.asu.cloudcomputing.awsclients.SQSAWSClient;
 import com.asu.cloudcomputing.service.ServerHandler;
-import com.asu.cloudcomputing.utility.PropertiesReader;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sqs.model.*;
 
-import java.io.*;
-import java.time.Instant;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.Date;
 
 
 @SpringBootApplication
 @RestController
+@EnableScheduling
 public class WebserverApplication {
 
 	static ServerHandler handler;
@@ -58,23 +54,14 @@ public class WebserverApplication {
 		return handler.getClassifiedImageResult(requestId);
 	}
 
-	@GetMapping("/classify")
-	public String testApi() {
+	@Scheduled(fixedRate = 5000)
+	public void callLoadBalancer() {
+		handler.loadBalancing();
+	}
 
-//		String messageBody = "";
-//		try {
-//			messageBody = Base64.getEncoder().encodeToString(multipartFile.getBytes());
-//		} catch (IOException e) {
-//			e.printStackTrace();
-//			return "An issue has occurred while trying to encode Image.";
-//		}
-//
-//		String requestId = handler.publishImageToSQSQueue(messageBody);
-
-		//TODO invoke a app server(Scaling).
-
-
-		return handler.getClassifiedImageResult("1662864974690");
+	@Scheduled(fixedRate = 5000)
+	public void processResponseQueue() {
+		handler.processResponseSQS();
 	}
 
 }
