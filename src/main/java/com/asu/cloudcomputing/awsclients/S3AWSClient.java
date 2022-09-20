@@ -28,7 +28,6 @@ public class S3AWSClient {
     }
 
     public void saveSQSMessagesToS3(String bucketName, Map<String, String> messages) {
-        PutObjectRequest request = PutObjectRequest.builder().bucket(bucketName).key(MESSAGES_FILE).build();
         PutObjectRequest putOb = PutObjectRequest.builder()
                 .bucket(bucketName)
                 .key(MESSAGES_FILE)
@@ -57,10 +56,8 @@ public class S3AWSClient {
         } catch (IOException e) {
             System.out.println("Unable to fetch the data from queue.");
         }
+        System.out.println("Received the following responses from S3 - " + messages);
         return messages;
     }
 
-    public String getResponseForRequest(String requestId) {
-        return "";
-    }
 }

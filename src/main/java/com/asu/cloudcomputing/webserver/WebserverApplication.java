@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Base64;
 import java.util.Date;
 
@@ -29,16 +30,11 @@ public class WebserverApplication {
 		SpringApplication.run(WebserverApplication.class, args);
 	}
 
-//	@GetMapping("/getImage")
-//	public String getImage() {
-//		String queueURL = props.getProperty("amazon.sqs.request-queue");
-//		return queueURL;
-//	}
-
 	@PostMapping("/classifyImage")
 	public String classifyImage(@RequestParam(value = "myfile") MultipartFile multipartFile) {
 
 		String messageBody = "";
+		System.out.println("A Request to classify image has been received at - " + LocalTime.now());
 		try {
 			messageBody = Base64.getEncoder().encodeToString(multipartFile.getBytes());
 		} catch (IOException e) {
@@ -48,18 +44,17 @@ public class WebserverApplication {
 
 		String requestId = handler.publishImageToSQSQueue(messageBody);
 
-		//TODO invoke a app server(Scaling).
-
-
 		return handler.getClassifiedImageResult(requestId);
 	}
 
-	@Scheduled(fixedRate = 5000)
+	//@Scheduled(fixedRate = 10000)
+	@GetMapping("/loadbalancing")
 	public void callLoadBalancer() {
 		handler.loadBalancing();
 	}
 
-	@Scheduled(fixedRate = 5000)
+	//@Scheduled(fixedRate = 5000)
+	@GetMapping("/processResponseQueue")
 	public void processResponseQueue() {
 		handler.processResponseSQS();
 	}

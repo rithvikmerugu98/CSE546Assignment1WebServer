@@ -65,7 +65,6 @@ public class SQSAWSClient {
         ReceiveMessageResponse response = sqsClient.receiveMessage(ReceiveMessageRequest.builder()
                 .queueUrl(queueUrl).messageAttributeNames("*").maxNumberOfMessages(10).build());
         List<String> messageReceipts = new ArrayList<>();
-        System.out.println(response);
         if (response.hasMessages()) {
             List<Message> messages = response.messages();
             for (Message message : messages) {

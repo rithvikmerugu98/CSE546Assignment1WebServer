@@ -5,23 +5,11 @@ import com.asu.cloudcomputing.awsclients.Ec2AWSClient;
 import com.asu.cloudcomputing.awsclients.S3AWSClient;
 import com.asu.cloudcomputing.awsclients.SQSAWSClient;
 import com.asu.cloudcomputing.utility.PropertiesReader;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.core.ResponseInputStream;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.model.Instance;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.HashMap;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -45,12 +33,14 @@ public class ServerHandler {
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
         sqsClient.publishMessages(requestQueue, messageBody, requestId );
+        System.out.println("Successfully uploaded the image to queue with requestID - " + requestId);
         return requestId;
     }
 
     public String getClassifiedImageResult(String requestId) {
         String bucketName = props.getProperty("amazon.s3.bucket-name");
         S3AWSClient s3Client = awsClientsProvider.getS3Client();
+        System.out.println("Starting to poll for the response from S3.");
         while(true) {
             Map<String, String> responses = s3Client.getMessagesFromFile(bucketName);
             if(responses.containsKey(requestId)) {
@@ -59,7 +49,7 @@ public class ServerHandler {
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException e) {
-                    return "Unable to return the response, Check the S3 bucket.";
+                    return "Unable to return the response, Check the S3 bucket. Issue occurred when polling for response.";
                 }
             }
         }
@@ -67,6 +57,7 @@ public class ServerHandler {
     }
 
     public void loadBalancing() {
+        System.out.println("Invoking LoadBalancer at " + LocalTime.now());
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
         Ec2AWSClient ec2Client = awsClientsProvider.getEc2Client();
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
@@ -80,8 +71,8 @@ public class ServerHandler {
             while(instanceNumber <= 20 && instanceNumber < appFleetSize + reqNumberOfInstances) {
                 ec2Client.launchAppTierInstance(appTierLaunchTemplate, instanceNumber);
             }
-        } else if(appFleetSize == 0) {
-            ec2Client.launchAppTierInstance(appTierLaunchTemplate, 1);
+//        } else if(appFleetSize == 0) {
+//            ec2Client.launchAppTierInstance(appTierLaunchTemplate, 1);
         }
     }
 
@@ -91,49 +82,12 @@ public class ServerHandler {
         String responseQueueURL = props.getProperty("amazon.sqs.response-queue");
         String bucketName = props.getProperty("amazon.s3.bucket-name");
         Map<String, String> newResponses = sqsClient.getMessagesFromResponseQueue(responseQueueURL);
+        System.out.println("Received the following responses from response queue - " + newResponses);
         Map<String, String> savedResponses = s3Client.getMessagesFromFile(bucketName);
         savedResponses.putAll(newResponses);
         s3Client.saveSQSMessagesToS3(bucketName, savedResponses);
-
+        System.out.println("Saved the message responses to S3.");
     }
 
-    public static void main(String[] args) {
-        S3Client s3Client = S3Client.builder().region(Region.US_EAST_1).build();
-
-        Map<String, String> mp = new HashMap<>();
-        Map<String, String> mp2 = new HashMap<>();
-
-        mp.put("Key1", "Value1");
-        mp.put("Key2", "Value2");
-        GetObjectRequest objectRequest = GetObjectRequest
-                .builder()
-                .key("SqsMessages/messages.json")
-                .bucket("rmerugu-assignment1")
-                .build();
-
-        ResponseBytes<GetObjectResponse> object = s3Client.getObjectAsBytes(objectRequest);
-        System.out.println(object.response().contentLength()) ;
-        ObjectMapper objectMapper = new ObjectMapper();
-        TypeReference<HashMap<String,String>> typeRef = new TypeReference<>() {
-        };
-        try {
-            mp2 = objectMapper.readValue(object.asByteArray(), typeRef);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        PutObjectRequest putOb = PutObjectRequest.builder()
-                .bucket("rmerugu-assignment1")
-                .key("SqsMessages/messages.json")
-                .build();
-        mp2.put("Key4", "Value2");
-        try {
-            PutObjectResponse response = s3Client
-                    .putObject(putOb, RequestBody.fromString(objectMapper.writeValueAsString(mp2)));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-
-
-    }
 
 }
