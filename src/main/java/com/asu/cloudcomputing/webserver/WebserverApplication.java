@@ -59,4 +59,9 @@ public class WebserverApplication {
 		handler.processResponseSQS();
 	}
 
+	@GetMapping("/healthCheck")
+	public int healthCheck() {
+		return 200;
+	}
+
 }

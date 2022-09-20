@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class ServerHandler {
 
@@ -29,7 +30,8 @@ public class ServerHandler {
     }
 
     public String publishImageToSQSQueue(String messageBody) {
-        String requestId = String.valueOf(Instant.now().toEpochMilli());
+        //String requestId = String.valueOf(Instant.now().toEpochMilli());
+        String requestId = UUID.randomUUID().toString();
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
         sqsClient.publishMessages(requestQueue, messageBody, requestId );
@@ -45,7 +47,7 @@ public class ServerHandler {
             System.out.println("Polling messages for request - " + requestId);
             Map<String, String> responses = s3Client.getMessagesFromFile(bucketName);
             if(responses.containsKey(requestId)) {
-                System.out.println("Returning the following response from the bucket - " + responses.get(requestId));
+                System.out.println("Returning the following response from the bucket - " + responses.get(requestId) + " for request - " + requestId);
                 return responses.get(requestId);
             } else {
                 try {
@@ -84,11 +86,13 @@ public class ServerHandler {
         String responseQueueURL = props.getProperty("amazon.sqs.response-queue");
         String bucketName = props.getProperty("amazon.s3.bucket-name");
         Map<String, String> newResponses = sqsClient.getMessagesFromResponseQueue(responseQueueURL);
-        System.out.println("Received the following responses from response queue - " + newResponses);
-        Map<String, String> savedResponses = s3Client.getMessagesFromFile(bucketName);
-        savedResponses.putAll(newResponses);
-        s3Client.saveSQSMessagesToS3(bucketName, savedResponses);
-        System.out.println("Saved the message responses to S3.");
+        if(newResponses.size() > 0) {
+            System.out.println("Received the following responses from response queue - " + newResponses);
+            Map<String, String> savedResponses = s3Client.getMessagesFromFile(bucketName);
+            savedResponses.putAll(newResponses);
+            s3Client.saveSQSMessagesToS3(bucketName, savedResponses);
+            System.out.println("Saved the message responses to S3.");
+        }
     }
 
 

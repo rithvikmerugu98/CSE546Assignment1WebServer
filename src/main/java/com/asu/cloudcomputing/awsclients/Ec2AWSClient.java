@@ -59,6 +59,10 @@ public class Ec2AWSClient {
         return instances;
     }
 
+    public void terminateInstance(String instanceID){
+        ec2Client.terminateInstances(TerminateInstancesRequest.builder().instanceIds(instanceID).build());
+    }
+
 
 
 }
