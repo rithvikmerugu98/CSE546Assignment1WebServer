@@ -42,8 +42,10 @@ public class ServerHandler {
         S3AWSClient s3Client = awsClientsProvider.getS3Client();
         System.out.println("Starting to poll for the response from S3.");
         while(true) {
+            System.out.println("Polling messages for request - " + requestId);
             Map<String, String> responses = s3Client.getMessagesFromFile(bucketName);
             if(responses.containsKey(requestId)) {
+                System.out.println("Returning the following response from the bucket - " + responses.get(requestId));
                 return responses.get(requestId);
             } else {
                 try {
@@ -71,8 +73,8 @@ public class ServerHandler {
             while(instanceNumber <= 20 && instanceNumber < appFleetSize + reqNumberOfInstances) {
                 ec2Client.launchAppTierInstance(appTierLaunchTemplate, instanceNumber);
             }
-//        } else if(appFleetSize == 0) {
-//            ec2Client.launchAppTierInstance(appTierLaunchTemplate, 1);
+        } else if(appFleetSize == 0) {
+            ec2Client.launchAppTierInstance(appTierLaunchTemplate, 1);
         }
     }
 

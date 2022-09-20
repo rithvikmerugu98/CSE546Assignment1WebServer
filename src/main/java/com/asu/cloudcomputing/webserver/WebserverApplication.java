@@ -47,13 +47,13 @@ public class WebserverApplication {
 		return handler.getClassifiedImageResult(requestId);
 	}
 
-	//@Scheduled(fixedRate = 10000)
+	//@Scheduled(fixedRate = 15000)
 	@GetMapping("/loadbalancing")
 	public void callLoadBalancer() {
 		handler.loadBalancing();
 	}
 
-	//@Scheduled(fixedRate = 5000)
+	@Scheduled(fixedRate = 10000)
 	@GetMapping("/processResponseQueue")
 	public void processResponseQueue() {
 		handler.processResponseSQS();

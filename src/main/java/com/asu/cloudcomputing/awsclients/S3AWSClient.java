@@ -56,7 +56,6 @@ public class S3AWSClient {
         } catch (IOException e) {
             System.out.println("Unable to fetch the data from queue.");
         }
-        System.out.println("Received the following responses from S3 - " + messages);
         return messages;
     }
 
