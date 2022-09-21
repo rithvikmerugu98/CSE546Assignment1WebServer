@@ -47,7 +47,7 @@ public class WebserverApplication {
 		return handler.getClassifiedImageResult(requestId);
 	}
 
-	//@Scheduled(fixedRate = 15000)
+	@Scheduled(fixedRate = 15000)
 	@GetMapping("/loadbalancing")
 	public void callLoadBalancer() {
 		handler.loadBalancing();
@@ -63,5 +63,6 @@ public class WebserverApplication {
 	public int healthCheck() {
 		return 200;
 	}
+
 
 }

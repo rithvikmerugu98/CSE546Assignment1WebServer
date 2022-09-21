@@ -8,8 +8,9 @@ import com.asu.cloudcomputing.utility.PropertiesReader;
 import software.amazon.awssdk.services.ec2.model.Instance;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,10 +20,15 @@ public class ServerHandler {
     private static PropertiesReader props;
     private static AWSClientProvider awsClientsProvider;
 
+    private static volatile LocalDateTime lastResponseTime;
+    private static volatile LocalDateTime lastRequestTime;
+
 
     public ServerHandler() {
         try {
             props = new PropertiesReader("application.properties");
+            lastResponseTime = LocalDateTime.now();
+            lastRequestTime = LocalDateTime.now();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -30,12 +36,12 @@ public class ServerHandler {
     }
 
     public String publishImageToSQSQueue(String messageBody) {
-        //String requestId = String.valueOf(Instant.now().toEpochMilli());
         String requestId = UUID.randomUUID().toString();
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
         sqsClient.publishMessages(requestQueue, messageBody, requestId );
         System.out.println("Successfully uploaded the image to queue with requestID - " + requestId);
+        lastRequestTime = LocalDateTime.now();
         return requestId;
     }
 
@@ -67,15 +73,31 @@ public class ServerHandler {
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
         String appTierLaunchTemplate = props.getProperty("amazon.ec2.apptier.launch-template");
         int messageCount = sqsClient.getMessagesInQueue(requestQueue);
+
         List<Instance> instances = ec2Client.getActiveAppInstances();
         int appFleetSize = instances.size();
+        System.out.println("App Server fleet size - " + appFleetSize);
         if(appFleetSize * 5 < messageCount) {
             int reqNumberOfInstances = (int) Math.ceil((messageCount - (appFleetSize * 5))/5.0);
             int instanceNumber = appFleetSize + 1;
-            while(instanceNumber <= 20 && instanceNumber < appFleetSize + reqNumberOfInstances) {
-                ec2Client.launchAppTierInstance(appTierLaunchTemplate, instanceNumber);
+            while(instanceNumber <= 20 && reqNumberOfInstances-->0) {
+                ec2Client.launchAppTierInstance(appTierLaunchTemplate, instanceNumber++);
             }
-        } else if(appFleetSize == 0) {
+        } else if(messageCount == 0) {
+            LocalDateTime now = LocalDateTime.now();
+            System.out.println("Last Request received at - " + lastRequestTime);
+            System.out.println("Last Response received at - " + lastResponseTime);
+            if(lastRequestTime.plusMinutes(1).compareTo(now) < 0 &&
+                    lastResponseTime.plusMinutes(1).compareTo(now) < 0){
+                System.out.println("Downscaling the instances.");
+                instances.stream().filter(ec2Client.notFirstAppInstance)
+                        .map(Instance::instanceId)
+                        .forEach(ec2Client::terminateInstance);
+            }
+
+        }
+        if(appFleetSize == 0) {
+            System.out.println("No app instances found so creating an instance.");
             ec2Client.launchAppTierInstance(appTierLaunchTemplate, 1);
         }
     }
@@ -92,7 +114,14 @@ public class ServerHandler {
             savedResponses.putAll(newResponses);
             s3Client.saveSQSMessagesToS3(bucketName, savedResponses);
             System.out.println("Saved the message responses to S3.");
+            lastResponseTime = LocalDateTime.now();
         }
+    }
+
+    public static void main(String[] args) {
+        System.out.println( LocalDateTime.now());
+        System.out.println( LocalDateTime.now().plusMinutes(2));
+        System.out.println(LocalDateTime.now().plusMinutes(2).compareTo(LocalDateTime.now()));
     }
 
 

@@ -1,12 +1,12 @@
 package com.asu.cloudcomputing.awsclients;
 
-import com.asu.cloudcomputing.model.Ec2Instance;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class Ec2AWSClient {
     Ec2Client ec2Client;
@@ -22,10 +22,20 @@ public class Ec2AWSClient {
         return ec2Client;
     }
 
+    public Predicate<Instance> notFirstAppInstance = instance -> {
+        if(instance.hasTags()) {
+            for(Tag tag : instance.tags()) {
+                if(tag.key().equals("Name") && tag.value().equals("app-instance1")) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
     public RunInstancesResponse launchAppTierInstance(String launchTemplate, int instanceNumber) {
 
         RunInstancesRequest ec2RunRequest = RunInstancesRequest.builder()
-                
                 .launchTemplate(LaunchTemplateSpecification.builder()
                         .launchTemplateId(launchTemplate).build())
                 .tagSpecifications(TagSpecification.builder()
@@ -35,6 +45,8 @@ public class Ec2AWSClient {
                             Tag.builder().key("ServerType")
                                 .value("AppTier").build()).build()
                         )
+                .minCount(1)
+                .maxCount(1)
                 .build();
         RunInstancesResponse response = ec2Client.runInstances(ec2RunRequest);
         return response;
