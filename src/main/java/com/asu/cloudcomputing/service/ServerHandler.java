@@ -77,8 +77,11 @@ public class ServerHandler {
         List<Instance> instances = ec2Client.getActiveAppInstances();
         int appFleetSize = instances.size();
         System.out.println("App Server fleet size - " + appFleetSize);
+        System.out.println("Approx number of pending requests - " + messageCount);
         if(appFleetSize * 5 < messageCount) {
             int reqNumberOfInstances = (int) Math.ceil((messageCount - (appFleetSize * 5))/5.0);
+            reqNumberOfInstances = Math.min(reqNumberOfInstances, 3);
+            System.out.println("Creating " + reqNumberOfInstances + " to balance the load." );
             int instanceNumber = appFleetSize + 1;
             while(instanceNumber <= 20 && reqNumberOfInstances-->0) {
                 ec2Client.launchAppTierInstance(appTierLaunchTemplate, instanceNumber++);
@@ -88,13 +91,12 @@ public class ServerHandler {
             System.out.println("Last Request received at - " + lastRequestTime);
             System.out.println("Last Response received at - " + lastResponseTime);
             if(lastRequestTime.plusMinutes(1).compareTo(now) < 0 &&
-                    lastResponseTime.plusMinutes(1).compareTo(now) < 0){
+                    lastResponseTime.plusSeconds(35).compareTo(now) < 0 && appFleetSize > 1) {
                 System.out.println("Downscaling the instances.");
                 instances.stream().filter(ec2Client.notFirstAppInstance)
                         .map(Instance::instanceId)
                         .forEach(ec2Client::terminateInstance);
             }
-
         }
         if(appFleetSize == 0) {
             System.out.println("No app instances found so creating an instance.");
@@ -116,12 +118,6 @@ public class ServerHandler {
             System.out.println("Saved the message responses to S3.");
             lastResponseTime = LocalDateTime.now();
         }
-    }
-
-    public static void main(String[] args) {
-        System.out.println( LocalDateTime.now());
-        System.out.println( LocalDateTime.now().plusMinutes(2));
-        System.out.println(LocalDateTime.now().plusMinutes(2).compareTo(LocalDateTime.now()));
     }
 
 
