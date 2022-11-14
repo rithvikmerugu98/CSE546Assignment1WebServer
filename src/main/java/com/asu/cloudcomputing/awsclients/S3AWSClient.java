@@ -1,19 +1,22 @@
 package com.asu.cloudcomputing.awsclients;
 
+import com.amazonaws.services.s3.AmazonS3URI;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.sqs.model.Message;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +43,15 @@ public class S3AWSClient {
         }
     }
 
+    public void saveImageToS3(String bucketName, String filePath) {
+        String fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucketName).key(fileName).build();
+        s3Client.putObject(request, RequestBody.fromFile(new File(filePath)));
+    }
+
+
+
     public Map<String, String> getMessagesFromFile(String bucketName) {
         Map<String, String> messages = new HashMap<>();
         GetObjectRequest request = GetObjectRequest.builder()
@@ -58,5 +70,14 @@ public class S3AWSClient {
         }
         return messages;
     }
+
+    public void uploadImageToS3(String bucketName, String fileName, byte[] byteData) {
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(fileName)
+                .build();
+        s3Client.putObject(request, RequestBody.fromBytes(byteData));
+    }
+
 
 }

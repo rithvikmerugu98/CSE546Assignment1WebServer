@@ -1,16 +1,19 @@
 package com.asu.cloudcomputing.service;
 
+import com.amazonaws.services.s3.AmazonS3URI;
 import com.asu.cloudcomputing.awsclients.AWSClientProvider;
 import com.asu.cloudcomputing.awsclients.Ec2AWSClient;
 import com.asu.cloudcomputing.awsclients.S3AWSClient;
 import com.asu.cloudcomputing.awsclients.SQSAWSClient;
 import com.asu.cloudcomputing.utility.PropertiesReader;
 import software.amazon.awssdk.services.ec2.model.Instance;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,18 +38,18 @@ public class ServerHandler {
         awsClientsProvider = new AWSClientProvider();
     }
 
-    public String publishImageToSQSQueue(String messageBody) {
-        String requestId = UUID.randomUUID().toString();
+    public String publishImageToSQSQueue(String fileName, String messageBody) {
+
         String requestQueue = props.getProperty("amazon.sqs.request-queue");
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
-        sqsClient.publishMessages(requestQueue, messageBody, requestId );
-        System.out.println("Successfully uploaded the image to queue with requestID - " + requestId);
+        sqsClient.publishMessages(requestQueue, messageBody, fileName);
+        System.out.println("Successfully uploaded the image to queue with requestID - " + fileName);
         lastRequestTime = LocalDateTime.now();
-        return requestId;
+        return fileName;
     }
 
     public String getClassifiedImageResult(String requestId) {
-        String bucketName = props.getProperty("amazon.s3.bucket-name");
+        String bucketName = props.getProperty("amazon.s3.output-bucket-name");
         S3AWSClient s3Client = awsClientsProvider.getS3Client();
         System.out.println("Starting to poll for the response from S3.");
         while(true) {
@@ -108,7 +111,7 @@ public class ServerHandler {
         SQSAWSClient sqsClient = awsClientsProvider.getSQSClient();
         S3AWSClient s3Client = awsClientsProvider.getS3Client();
         String responseQueueURL = props.getProperty("amazon.sqs.response-queue");
-        String bucketName = props.getProperty("amazon.s3.bucket-name");
+        String bucketName = props.getProperty("amazon.s3.output-bucket-name");
         Map<String, String> newResponses = sqsClient.getMessagesFromResponseQueue(responseQueueURL);
         if(newResponses.size() > 0) {
             System.out.println("Received the following responses from response queue - " + newResponses);
@@ -118,6 +121,31 @@ public class ServerHandler {
             System.out.println("Saved the message responses to S3.");
             lastResponseTime = LocalDateTime.now();
         }
+    }
+
+    public void uploadImage(byte[] imageBytes, String name) {
+        String bucketName = props.getProperty("amazon.s3.input-bucket-name");
+        S3AWSClient s3Client = awsClientsProvider.getS3Client();
+        s3Client.uploadImageToS3(bucketName,name, imageBytes);
+    }
+
+    public static void main(String[] args) {
+        try {
+            props = new PropertiesReader("application.properties");
+            lastResponseTime = LocalDateTime.now();
+            lastRequestTime = LocalDateTime.now();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        awsClientsProvider = new AWSClientProvider();
+
+        String imagePath = "C:\\Users\\rithv\\OneDrive\\Desktop\\Fall 22\\Cloud computing\\Assignment1\\imagenet-100\\test_4.JPEG";
+        String bucketName = System.getenv("InputS3Bucket");
+        bucketName = bucketName == null || bucketName.equals("") ? "strawhatsassignment3inputbucket" : bucketName;
+        S3AWSClient s3Client = awsClientsProvider.getS3Client();
+        s3Client.saveImageToS3(bucketName, imagePath);
+        System.out.println("Uploaded image successfully.");
+
     }
 
 

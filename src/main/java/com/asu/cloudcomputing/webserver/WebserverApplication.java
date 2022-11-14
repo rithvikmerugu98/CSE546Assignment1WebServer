@@ -12,10 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Base64;
-import java.util.Date;
 
 
 @SpringBootApplication
@@ -36,15 +34,16 @@ public class WebserverApplication {
 		String messageBody = "";
 		System.out.println("A Request to classify image has been received at - " + LocalTime.now());
 		try {
+			handler.uploadImage(multipartFile.getBytes(), multipartFile.getOriginalFilename());
 			messageBody = Base64.getEncoder().encodeToString(multipartFile.getBytes());
 		} catch (IOException e) {
 			e.printStackTrace();
 			return "An issue has occurred while trying to encode Image.";
 		}
 
-		String requestId = handler.publishImageToSQSQueue(messageBody);
+		handler.publishImageToSQSQueue(multipartFile.getOriginalFilename(), messageBody);
 
-		return handler.getClassifiedImageResult(requestId);
+		return handler.getClassifiedImageResult(multipartFile.getOriginalFilename());
 	}
 
 	@Scheduled(fixedRate = 15000)
